@@ -187,6 +187,9 @@ spec:
             value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/spring-petclinic
           - name: IMAGE_TAG
             value : "$(tasks.build-image.results.IMAGE_DIGEST)"
+          - name: IMAGE_NEW_TAG
+            value : "$(tasks.source-clone.results.commit)"
+            default : 'latest'
         runAfter:
           - build-image
         taskRef:
