@@ -16,11 +16,18 @@ spec:
     - name: IMAGE_TAG
       type: string
       default: 'latest'
+    - name: IMAGE_NEW_TAG
+      type: string
+      default: 'latest'
+     
   steps:
     - name: pull-and-push
       image: quay.io/buildah/stable:v1.17.0
       script: |
         # Login to ecr
+        buildah images
+        buildah pull image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/spring-petclinic:latest
+        buildah images
         buildah login \
         --username AWS \
         --password "$(params.PASSWORD)" \
@@ -28,8 +35,8 @@ spec:
 
         # Pull and push to aws ecr
         # buildah pull hello-world
-        echo "$(params.IMAGE):$(params.IMAGE_TAG)"
-        buildah push  "$(params.IMAGE):latest" docker://"$(params.AWS_ACCOUNT_ID)".dkr.ecr."$(params.REGION)".amazonaws.com/hello-world:"latest"
+        # echo "$(params.IMAGE):$(params.IMAGE_TAG)"
+        buildah push  "$(params.IMAGE):latest" docker://"$(params.AWS_ACCOUNT_ID)".dkr.ecr."$(params.REGION)".amazonaws.com/hello-world:"$(params.IMAGE_NEW_TAG)"
       securityContext:
         capabilities:
           add: ["SETFCAP"]    
