@@ -14,8 +14,6 @@ spec:
       value: "{{ repo_url }}"
     - name: revision
       value: "{{ revision }}"
-    - name: AWS_ACCOUNT_ID
-      value: 515515862314
   pipelineSpec:
     params:
       - name: repo_url
@@ -23,13 +21,11 @@ spec:
     workspaces:
       - name: source
       - name: basic-auth
-      - name: myawskeys
     results:
       - name: APP_IMAGE_DIGETST
         description: The image digest built in the pipeline
         value: $(tasks.build-image.results.IMAGE_DIGEST)
     tasks:
-      
       - name: source-clone
         taskRef:
           name: git-clone
@@ -47,20 +43,24 @@ spec:
             value: "0"
           - name: subdirectory
             value: spring-petclinic
-      - name: ecr-get-password
+          - name: deleteExisting
+            value: true
+      - name: list-files
         taskRef:
-          kind: Task
-          name: aws-ecr-login
+            name: list-directory
+        params:
+          - name: sub-dirs
+            value: ["spring-petclinic"]
         runAfter:
           - source-clone
         workspaces:
-          - name: myawskeys
-            workspace: myawskeys
+          - name: directory
+            workspace: source
       - name: mvn-config
         taskRef: 
           name: mvn-config
         runAfter:
-          - ecr-get-password
+          - source-clone
         workspaces:
         - name: workspace
           workspace: source
@@ -115,8 +115,8 @@ spec:
         taskRef:
           name: maven
         runAfter:
-          - code-analysis
           - security-scan
+          - code-analysis     
         workspaces:
         - name: source
           workspace: source
@@ -133,25 +133,42 @@ spec:
           - -DaltSnapshotDeploymentRepository=nexus::default::http://nexus:8081/repository/maven-snapshots/
           - -Durl=http://nexus:8081/repository/maven-releases/
           - -DrepositoryId=nexus
+      
       - name: build-image
-        taskRef:
-          name: s2i-java
-          kind: ClusterTask
-        runAfter:
-        - release-app
         params:
           - name: TLSVERIFY
-            value: "false"
-          - name: MAVEN_MIRROR_URL
-            value: http://nexus:8081/repository/maven-public/
-          - name: PATH_CONTEXT
-            value: spring-petclinic/target
+            value: 'false'
+          - name: CONTEXT
+            value: spring-petclinic
           - name: IMAGE
-            value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/spring-petclinic:latest
+            value: >-
+              image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/spring-petclinic:latest
+        runAfter:
+          - release-app
+        taskRef:
+          kind: ClusterTask
+          name: buildah
         workspaces:
-        - name: source
-          workspace: source
-      
+          - name: source
+            workspace: source    
+      # - name: build-image-2
+      #   taskRef:
+      #     name: s2i-java
+      #     kind: ClusterTask
+      #   runAfter:
+      #   - release-app
+      #   params:
+      #     - name: TLSVERIFY
+      #       value: "false"
+      #     - name: MAVEN_MIRROR_URL
+      #       value: http://nexus:8081/repository/maven-public/
+      #     - name: PATH_CONTEXT
+      #       value: spring-petclinic/target
+      #     - name: IMAGE
+      #       value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/spring-petclinic:latest
+      #   workspaces:
+      #   - name: source
+      #     workspace: source
       - name: update-manifests
         runAfter:
         - build-image
@@ -159,7 +176,7 @@ spec:
           name: git-update-deployment
         params:
           - name: GIT_REPOSITORY
-            value: http://gitea-demo-cicd.apps.rosa-v6jrh.m01r.p1.openshiftapps.com/gitea/spring-petclinic-config
+            value: http://gitea-demo-cicd.apps.rosa-k7zks.xtzw.p1.openshiftapps.com/gitea/spring-petclinic-config
           - name: GIT_USERNAME
             value: gitea
           - name: GIT_PASSWORD
@@ -175,28 +192,6 @@ spec:
         workspaces:
         - name: workspace
           workspace: source
-      - name: push-image
-        params:
-          - name: PASSWORD
-            value: $(tasks.ecr-get-password.results.password)
-          - name: AWS_ACCOUNT_ID
-            value: $(params.AWS_ACCOUNT_ID)
-          - name: REGION
-            value: us-east-1
-          - name: IMAGE
-            value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/spring-petclinic
-          - name: IMAGE_TAG
-            value : "$(tasks.build-image.results.IMAGE_DIGEST)"
-          - name: IMAGE_NEW_TAG
-            value : "$(tasks.source-clone.results.commit)"
-            default : 'latest'
-        runAfter:
-          - build-image
-        taskRef:
-          kind: Task
-          name: push-image
-        
-     
       - name: pr-promote
         runAfter:
         - update-manifests
@@ -204,7 +199,7 @@ spec:
           name: create-promote-pull-request
         params:
           - name: GIT_REPOSITORY
-            value: http://gitea-demo-cicd.apps.rosa-v6jrh.m01r.p1.openshiftapps.com/gitea/spring-petclinic-config
+            value: http://gitea-demo-cicd.apps.rosa-k7zks.xtzw.p1.openshiftapps.com/gitea/spring-petclinic-config
           - name: GIT_USERNAME
             value: gitea
           - name: GIT_PASSWORD
@@ -216,19 +211,10 @@ spec:
         workspaces:
         - name: workspace
           workspace: source
-  
   workspaces:
-  - name : myawskeys
-    secret:
-        secretName: example
   - name: source
-    volumeClaimTemplate:
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
+    persistentVolumeClaim:
+        claimName: source
   - name: basic-auth
     secret:
       secretName: "{{ git_auth_secret }}"
