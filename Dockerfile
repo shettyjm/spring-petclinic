@@ -1,11 +1,15 @@
-FROM eclipse-temurin:17-jdk-jammy
+# FROM eclipse-temurin:17-jdk-jammy
  
-WORKDIR /app
+# WORKDIR /app
 
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-RUN ./mvnw dependency:resolve
+# COPY .mvn/ .mvn
+# COPY mvnw pom.xml ./
+# RUN ./mvnw dependency:resolve
 
-COPY src ./src
+# COPY src ./src
 
-CMD ["./mvnw", "spring-boot:run"]
+# CMD ["./mvnw", "spring-boot:run"]
+
+FROM registry.access.redhat.com/ubi8/openjdk-11
+
+COPY target/tekton-spring-boot-0.0.1-SNAPSHOT.jar /deployments/
