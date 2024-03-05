@@ -159,7 +159,7 @@ spec:
           name: git-update-deployment
         params:
           - name: GIT_REPOSITORY
-            value: http://gitea-demo-cicd.apps.rosa-v6jrh.m01r.p1.openshiftapps.com/gitea/spring-petclinic-config
+            value: https://gitea-demo-cicd.apps.rosa-v6jrh.m01r.p1.openshiftapps.com/gitea/spring-petclinic-config
           - name: GIT_USERNAME
             value: gitea
           - name: GIT_PASSWORD
@@ -207,7 +207,7 @@ spec:
           name: create-promote-pull-request
         params:
           - name: GIT_REPOSITORY
-            value: http://gitea-demo-cicd.apps.rosa-v6jrh.m01r.p1.openshiftapps.com/gitea/spring-petclinic-config
+            value: https://gitea-demo-cicd.apps.rosa-v6jrh.m01r.p1.openshiftapps.com/gitea/spring-petclinic-config
           - name: GIT_USERNAME
             value: gitea
           - name: GIT_PASSWORD
